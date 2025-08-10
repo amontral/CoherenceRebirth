@@ -53,3 +53,14 @@ export function avgLastNDays(entries: CheckIn[], n=7): number {
   const sum = slice.reduce((acc,e)=>acc+e.score,0);
   return Math.round((sum / slice.length) * 10) / 10;
 }
+export function mostFrequentMode(entries: CheckIn[], lookback = 14): string | null {
+  const slice = [...entries].sort((a,b)=>b.date.localeCompare(a.date)).slice(0, lookback);
+  if (!slice.length) return null;
+  const counts = slice.reduce<Record<string, number>>((m,e)=> (m[e.mode]=(m[e.mode]||0)+1, m), {});
+  return Object.entries(counts).sort((a,b)=> b[1]-a[1])[0][0] || null;
+}
+
+export function lastEntry(entries: CheckIn[]): CheckIn | null {
+  if (!entries.length) return null;
+  return [...entries].sort((a,b)=> b.date.localeCompare(a.date))[0];
+}
