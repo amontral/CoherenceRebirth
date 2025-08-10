@@ -4,6 +4,8 @@ import {
   calcStreak,
   loadCheckIns,
   upsertToday,
+  mostFrequentMode,
+  lastEntry,
   type CheckIn,
 } from "./storage";
 
@@ -22,13 +24,18 @@ export default function App() {
   const [score, setScore] = useState<number>(70);
   const [submitted, setSubmitted] = useState(false);
 
-  // history + quick metrics
   const [history, setHistory] = useState<CheckIn[]>([]);
   const streak = useMemo(() => calcStreak(history), [history]);
   const avg7 = useMemo(() => avgLastNDays(history, 7), [history]);
+  const topMode = useMemo(() => mostFrequentMode(history, 14), [history]);
+  const latest = useMemo(() => lastEntry(history), [history]);
+
+  const [showSummary, setShowSummary] = useState(false);
 
   useEffect(() => {
-    setHistory(loadCheckIns());
+    const h = loadCheckIns();
+    setHistory(h);
+    if (h.length) setShowSummary(true);
   }, []);
 
   const reward = useMemo(() => {
@@ -50,14 +57,44 @@ export default function App() {
       <div className="mx-auto max-w-md p-4 space-y-4">
         <header className="pt-2 text-center">
           <h1 className="text-2xl font-bold">Coherence Check-In</h1>
-        <p className="text-slate-400 text-sm">60-second daily tap</p>
-          <p className="text-slate-400 text-xs mt-1">
-            Streak: <span className="font-semibold text-slate-200">{streak}</span> •
-            7-day avg: <span className="font-semibold text-slate-200">{avg7}</span>
-          </p>
+          <p className="text-slate-400 text-sm">60-second daily tap</p>
         </header>
 
-        {!submitted ? (
+        {/* SUMMARY FIRST VIEW */}
+        {showSummary && history.length > 0 && !submitted && (
+          <section className="bg-slate-900/60 rounded-2xl p-4 shadow space-y-2">
+            <h2 className="font-semibold text-lg">Your Pattern Snapshot</h2>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="rounded-xl bg-slate-900 border border-slate-700 p-3">
+                <p className="text-slate-400">Streak</p>
+                <p className="text-xl font-bold">{streak} days</p>
+              </div>
+              <div className="rounded-xl bg-slate-900 border border-slate-700 p-3">
+                <p className="text-slate-400">7-day avg</p>
+                <p className="text-xl font-bold">{avg7}</p>
+              </div>
+              <div className="rounded-xl bg-slate-900 border border-slate-700 p-3">
+                <p className="text-slate-400">Most frequent mode</p>
+                <p className="text-lg font-semibold">{topMode ?? "—"}</p>
+              </div>
+              <div className="rounded-xl bg-slate-900 border border-slate-700 p-3">
+                <p className="text-slate-400">Last check-in</p>
+                <p className="text-lg font-semibold">
+                  {latest ? `${latest.date} · ${latest.mode} · ${latest.score}` : "—"}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowSummary(false)}
+              className="w-full rounded-2xl py-3 mt-1 bg-white text-slate-900 font-semibold hover:opacity-90 transition"
+            >
+              Start Today’s Check-In
+            </button>
+          </section>
+        )}
+
+        {/* CHECK-IN FLOW */}
+        {!showSummary && !submitted && (
           <>
             <section className="bg-slate-900/50 rounded-2xl p-4 space-y-3 shadow">
               <h2 className="font-semibold">1) What mode are you in?</h2>
@@ -109,11 +146,18 @@ export default function App() {
               Submit Check-In
             </button>
           </>
-        ) : (
+        )}
+
+        {/* SUBMISSION CONFIRMATION */}
+        {submitted && (
           <section className="bg-slate-900/50 rounded-2xl p-6 space-y-3 text-center shadow">
             <p className="text-xl">✅ Check-In Complete</p>
-            <p>Mode: <span className="font-semibold">{mode}</span></p>
-            <p>Coherence: <span className="font-semibold">{score}</span></p>
+            <p>
+              Mode: <span className="font-semibold">{mode}</span>
+            </p>
+            <p>
+              Coherence: <span className="font-semibold">{score}</span>
+            </p>
             <p className="text-lg">{reward}</p>
             <div className="flex gap-2 justify-center pt-2">
               <button
@@ -126,6 +170,7 @@ export default function App() {
           </section>
         )}
 
+        {/* RECENT LIST */}
         {history.length > 0 && (
           <section className="bg-slate-900/40 rounded-2xl p-4 shadow">
             <h3 className="font-semibold mb-2 text-sm">Recent</h3>
@@ -136,7 +181,9 @@ export default function App() {
                 .map((h) => (
                   <li key={h.date} className="flex justify-between">
                     <span>{h.date}</span>
-                    <span>{h.mode} · {h.score}</span>
+                    <span>
+                      {h.mode} · {h.score}
+                    </span>
                   </li>
                 ))}
             </ul>
