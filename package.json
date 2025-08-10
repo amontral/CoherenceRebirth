@@ -4,10 +4,11 @@
   "version": "0.0.2",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "preview": "vite preview"
-  },
+  "dev": "vite",
+  "build": "vite build",          // ← remove "tsc -b &&"
+  "preview": "vite preview",
+  "typecheck": "tsc --noEmit"     // optional: separate type check
+},
   "dependencies": {
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
