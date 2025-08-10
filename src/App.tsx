@@ -1,4 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  avgLastNDays,
+  calcStreak,
+  loadCheckIns,
+  upsertToday,
+  type CheckIn,
+} from "./storage";
 
 type Mode = "Focused" | "Scattered" | "On Edge" | "Calm" | "High Energy";
 
@@ -15,6 +22,15 @@ export default function App() {
   const [score, setScore] = useState<number>(70);
   const [submitted, setSubmitted] = useState(false);
 
+  // history + quick metrics
+  const [history, setHistory] = useState<CheckIn[]>([]);
+  const streak = useMemo(() => calcStreak(history), [history]);
+  const avg7 = useMemo(() => avgLastNDays(history, 7), [history]);
+
+  useEffect(() => {
+    setHistory(loadCheckIns());
+  }, []);
+
   const reward = useMemo(() => {
     if (!submitted) return "";
     if (score >= 85) return "🔮 Crystal Earned";
@@ -22,12 +38,23 @@ export default function App() {
     return "🪙 Coin Earned";
   }, [submitted, score]);
 
+  function handleSubmit() {
+    if (!mode) return;
+    const next = upsertToday({ mode, score });
+    setHistory(next);
+    setSubmitted(true);
+  }
+
   return (
     <div className="min-h-full bg-slate-950 text-slate-100">
       <div className="mx-auto max-w-md p-4 space-y-4">
         <header className="pt-2 text-center">
           <h1 className="text-2xl font-bold">Coherence Check-In</h1>
-          <p className="text-slate-400 text-sm">60-second daily tap</p>
+        <p className="text-slate-400 text-sm">60-second daily tap</p>
+          <p className="text-slate-400 text-xs mt-1">
+            Streak: <span className="font-semibold text-slate-200">{streak}</span> •
+            7-day avg: <span className="font-semibold text-slate-200">{avg7}</span>
+          </p>
         </header>
 
         {!submitted ? (
@@ -70,7 +97,7 @@ export default function App() {
             </section>
 
             <button
-              onClick={() => mode && setSubmitted(true)}
+              onClick={handleSubmit}
               disabled={!mode}
               className={[
                 "w-full rounded-2xl py-3 text-center font-semibold transition shadow",
@@ -85,23 +112,34 @@ export default function App() {
         ) : (
           <section className="bg-slate-900/50 rounded-2xl p-6 space-y-3 text-center shadow">
             <p className="text-xl">✅ Check-In Complete</p>
-            <p>
-              Mode: <span className="font-semibold">{mode}</span>
-            </p>
-            <p>
-              Coherence: <span className="font-semibold">{score}</span>
-            </p>
+            <p>Mode: <span className="font-semibold">{mode}</span></p>
+            <p>Coherence: <span className="font-semibold">{score}</span></p>
             <p className="text-lg">{reward}</p>
             <div className="flex gap-2 justify-center pt-2">
               <button
-                onClick={() => {
-                  setSubmitted(false);
-                }}
+                onClick={() => setSubmitted(false)}
                 className="rounded-xl py-2 px-4 bg-slate-800 hover:bg-slate-700 border border-slate-600"
               >
                 Log another
               </button>
             </div>
+          </section>
+        )}
+
+        {history.length > 0 && (
+          <section className="bg-slate-900/40 rounded-2xl p-4 shadow">
+            <h3 className="font-semibold mb-2 text-sm">Recent</h3>
+            <ul className="space-y-1 text-sm text-slate-300">
+              {[...history]
+                .sort((a, b) => b.date.localeCompare(a.date))
+                .slice(0, 7)
+                .map((h) => (
+                  <li key={h.date} className="flex justify-between">
+                    <span>{h.date}</span>
+                    <span>{h.mode} · {h.score}</span>
+                  </li>
+                ))}
+            </ul>
           </section>
         )}
       </div>
